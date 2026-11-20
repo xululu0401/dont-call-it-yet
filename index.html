@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>先别急着说赢</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f3f1ec; color: #24221e; line-height: 1.6; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 20px 14px 40px; }
+  h1 { font-size: 25px; letter-spacing: 1px; }
+  .lead { color: #625d53; font-size: 14px; margin: 4px 0 14px; }
+  .card { background: #fff; border-radius: 8px; padding: 14px; border: 1px solid #dcd6ca; margin-bottom: 14px; min-width: 0; }
+  .card h2 { font-size: 15px; color: #625d53; font-weight: 600; margin-bottom: 8px; }
+  input, select, textarea { font: inherit; font-size: 14px; padding: 4px 6px; border: 1px solid #bdb5a6; border-radius: 5px; width: 100%; min-width: 0; background: #fdfcf9; font-variant-numeric: tabular-nums; }
+  textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; height: 64px; resize: vertical; word-break: break-all; }
+  .bad { border-color: #b23a2b !important; background: #fff0ec !important; }
+  label { font-size: 12px; color: #6d675c; display: block; }
+  button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 5px; border: 1px solid #3d4f7a; background: #3d4f7a; color: #fff; cursor: pointer; }
+  button.ghost { background: #fff; color: #3d4f7a; }
+  .row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .row + .row { margin-top: 10px; }
+  @media (max-width: 680px) { .row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .presets, .dl { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .tabs { display: flex; gap: 0; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { border-radius: 0; background: #fff; color: #3d4f7a; }
+  .tabs button:first-child { border-radius: 5px 0 0 5px; } .tabs button:last-child { border-radius: 0 5px 5px 0; }
+  .tabs button.on { background: #3d4f7a; color: #fff; }
+  .err { display: none; background: #fff0ec; border: 1px solid #e0b2a7; color: #8a2a1b; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; overflow-wrap: anywhere; }
+  /* 四格表 */
+  .grid2 { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1fr); gap: 6px; align-items: center; max-width: 560px; }
+  .grid2 .h { font-size: 12px; color: #6d675c; text-align: center; overflow-wrap: anywhere; }
+  .grid2 .rh { font-size: 12px; color: #6d675c; text-align: right; overflow-wrap: anywhere; }
+  .cell { border-radius: 6px; padding: 6px; border: 1px solid #e3ddd1; }
+  .cell.same { background: #f6f4ef; } .cell.wa { background: #e7ecf8; border-color: #9fb0d8; } .cell.wb { background: #fbeee2; border-color: #e0b48c; }
+  .cell small { display: block; font-size: 11px; color: #7a7466; }
+  .marks { margin-top: 10px; }
+  .marks summary { cursor: pointer; font-size: 13px; color: #3d4f7a; }
+  .marks .inner { margin-top: 8px; display: grid; gap: 6px; }
+  #markMsg { font-size: 12px; color: #6d675c; overflow-wrap: anywhere; }
+  /* 结论 */
+  #summary { font-size: 21px; font-weight: 700; overflow-wrap: anywhere; }
+  #summary.notyet, #summary.depends { color: #9a5a12; } #summary.win { color: #2f5d47; } #summary.tie, #summary.same { color: #625d53; }
+  .nums { display: flex; flex-wrap: wrap; gap: 6px 26px; margin: 10px 0 4px; }
+  .nums div { min-width: 0; } .nums small { display: block; font-size: 12px; color: #7a7466; }
+  .nums b { font-size: 24px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  #facts { margin: 8px 0 0 18px; font-size: 14px; } #facts li { margin: 3px 0; overflow-wrap: anywhere; }
+  /* 分歧题牌面 */
+  #duel { width: 100%; height: auto; display: block; }
+  .key { font-size: 12px; color: #6d675c; display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+  .key i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  table.t th, table.t td { padding: 4px 6px; border-bottom: 1px solid #eee8dc; text-align: right; }
+  table.t th { color: #6d675c; font-weight: 600; font-size: 12px; }
+  table.t td:last-child, table.t th:last-child { text-align: left; }
+  table.t tr.pass td { color: #2f5d47; } table.t tr.now td { font-weight: 700; }
+  .tw { overflow-x: auto; }
+  #sugs { display: grid; gap: 8px; }
+  .sug { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid #e3ddd1; border-radius: 6px; padding: 8px 10px; }
+  .sug span { min-width: 0; overflow-wrap: anywhere; font-size: 14px; } .sug button { flex: none; }
+  @media (max-width: 480px) { .sug { flex-direction: column; align-items: stretch; } }
+  .how { font-size: 13px; color: #4a463e; } .how p { margin: 6px 0; } .how b { color: #24221e; }
+  .muted { color: #7a7466; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>先别急着说赢</h1>
+  <p class="lead">两个模型、两版提示词，在同一套题上各考一遍，A 比 B 高了几个点。填四格（或贴逐题对错），看这几个点是真强还是运气，要多考多少题才说得准。默认数据是虚构的。</p>
+
+  <div class="card">
+    <div class="tabs" id="tabs"><button data-mode="cells">有逐题结果</button><button data-mode="acc">只知道两个准确率</button></div>
+    <div class="row">
+      <div><label for="nameA">A 叫什么</label><input id="nameA" maxlength="40"></div>
+      <div><label for="nameB">B 叫什么</label><input id="nameB" maxlength="40"></div>
+      <div><label for="alpha">门槛 α</label><input id="alpha" inputmode="decimal"></div>
+      <div><label for="m">一共比了几组（挑最好的来说）</label><input id="m" inputmode="numeric"></div>
+    </div>
+    <div id="boxCells" style="margin-top:12px">
+      <div class="grid2" id="g2">
+        <div></div><div class="h" id="hB1"></div><div class="h" id="hB0"></div>
+        <div class="rh" id="hA1"></div>
+        <div class="cell same"><small>两边都对</small><input id="n11" inputmode="numeric"></div>
+        <div class="cell wa"><small id="lb">只有 A 对</small><input id="b" inputmode="numeric"></div>
+        <div class="rh" id="hA0"></div>
+        <div class="cell wb"><small id="lc">只有 B 对</small><input id="c" inputmode="numeric"></div>
+        <div class="cell same"><small>两边都错</small><input id="n00" inputmode="numeric"></div>
+      </div>
+      <details class="marks"><summary>手上是逐题对错？贴进来帮你数四格</summary>
+        <div class="inner">
+          <label for="markA">A 的逐题对错（1/0、对/错、✓/✗ 都行，空格逗号随意）</label><textarea id="markA"></textarea>
+          <label for="markB">B 的逐题对错（同一顺序）</label><textarea id="markB"></textarea>
+          <div><button class="ghost" id="countMarks">数一下，填进四格</button> <span id="markMsg"></span></div>
+        </div>
+      </details>
+    </div>
+    <div id="boxAcc" style="margin-top:12px">
+      <div class="row">
+        <div><label for="total">总题数</label><input id="total" inputmode="numeric"></div>
+        <div><label for="accA" id="laA">A 答对几道（或 73%）</label><input id="accA"></div>
+        <div><label for="accB" id="laB">B 答对几道（或 69%）</label><input id="accB"></div>
+      </div>
+    </div>
+    <div class="presets" id="presets"></div>
+  </div>
+
+  <div class="err" id="error"></div>
+
+  <div id="out">
+    <div class="card">
+      <div id="summary"></div>
+      <div class="nums" id="nums"></div>
+      <ul id="facts"></ul>
+    </div>
+    <div class="card" id="duelCard">
+      <h2 id="duelTitle">分歧题：一道一个点</h2>
+      <svg id="duel" viewBox="0 0 900 200" role="img" aria-label="分歧题牌面"></svg>
+      <div class="key" id="duelKey"></div>
+    </div>
+    <div class="card">
+      <h2 id="tblTitle"></h2>
+      <div class="tw"><table class="t" id="tbl"></table></div>
+      <p class="muted" id="tblNote"></p>
+    </div>
+    <div class="card" id="sugCard">
+      <h2>换个条件看看（点一下代回去重算）</h2>
+      <div id="sugs"></div>
+    </div>
+    <div class="card">
+      <h2>带走结果</h2>
+      <div class="dl">
+        <button id="dlCSV">CSV 表格</button><button id="dlMD">Markdown</button><button id="dlPNG">结果卡 PNG</button><button id="dlJSON" class="ghost">JSON 备份</button>
+        <button id="reset" class="ghost">恢复默认</button>
+      </div>
+      <p class="muted" style="margin-top:6px">输入自动保存在这台设备的浏览器里，刷新还在。</p>
+    </div>
+  </div>
+
+  <div class="card how">
+    <h2>怎么算的</h2>
+    <p><b>只有分歧题算数。</b>同一套题，两边都对、都错的题分不出高下；真正分出高下的只有「一边对一边错」的分歧题。准确率差 = (只有 A 对 − 只有 B 对) ÷ 总题数。</p>
+    <p><b>精确 McNemar 检验（双侧）。</b>假设两边其实一样强，每道分歧题归 A 还是归 B 就像抛硬币。p = 2 × P(硬币那边 ≤ 较少一方赢的道数)，最多到 1。p 小于门槛，才说差距不太像运气。</p>
+    <p><b>比了好几组？</b>挑最好的那组来说，运气被放大了。门槛按 α ÷ 组数算（Bonferroni，偏保守）。</p>
+    <p><b>多考几倍。</b>假设新题上四格的比例跟现在完全一样，找最少要考到现在的几倍。真实再考一次比例会变，这只是「至少要这么多题」的量级。</p>
+    <p><b>只知道两个准确率。</b>答对题数之差是确定的，但分歧题有多少不知道：最少等于差的道数，最多到 min(两边答对之和, 两边答错之和)。所以给的是 p 的范围；「两边独立答题」那一行只作参考，同一套题上两个模型往往错在相近的题上。</p>
+    <p><b>不配对对照。</b>把两份结果当成两批不同的题（两比例 z 检验）只为对比，不用于结论。</p>
+    <p class="muted">不做：置信区间、检验功效、三个以上一起比、分题型加权、题目本身有错、题目泄露进训练数据。过了门槛只说明在这套题上不太像运气，不说明换一套题、换一类任务也赢。</p>
+  </div>
+</div>
+
+  <script>
+/* 先别急着说赢 · 计算核心（无 DOM，可在 node 里 require）
+ *
+ * 问题：两个模型 / 两版提示词 / 两个版本，在同一套题上各考一遍，A 比 B 高了几个点。
+ *       这几个点是真的强，还是换一套题就没了？
+ *
+ * 模型（全部写在页面「怎么算的」里）：
+ *   同一套 N 道题，每道题两边各有对错 → 四格：都对 n11、只有 A 对 b、只有 B 对 c、都错 n00。
+ *   都对、都错的题不分胜负；真正分出高下的只有 D = b + c 道「分歧题」。
+ *   准确率差 = (b − c) ÷ N。
+ *   精确 McNemar 检验（双侧）：假设两边其实一样强，每道分歧题归 A 还是归 B 各占一半，
+ *     X ~ 二项(D, 1/2)，p = min(1, 2 × P(X ≤ min(b, c)))。D = 0 时 p = 1。
+ *   一共比了 m 组（挑最好的那组来说）→ 门槛按 Bonferroni 改成 α ÷ m。
+ *   二项尾概率用正则化不完全 Beta 函数算：P(X ≤ k) = I_{1/2}(D − k, k + 1)（连分式），D 再大也不用逐项相加。
+ *   「再考几倍」：假设新题上的结果跟现在一模一样（四格都乘 t 倍），找最小的整数 t 让 p 过门槛。
+ *   「分歧题里要赢几道」：分歧题总数 D 不变，A 至少赢多少道 p 才过门槛。
+ *   只知道两个准确率时：b − c = 两边答对题数之差 k 是确定的，D 只知道范围 [k, min(a+b, 2N−a−b)]（且与 k 同奇偶），
+ *     给出 p 的范围，和「分歧题不超过多少道就能说赢」。两边独立答题的 D 只作参考，同一套题上两个模型通常不独立。
+ *   不配对对照：把两份结果当成两批不同的题，用两比例 z 检验（合并方差）算 p，只作对照，不用于结论。
+ *   不做：置信区间、检验功效、多于两个模型的整体检验、分题型加权、题目本身出错、题目泄露到训练数据。
+ */
+(function (root) {
+  'use strict';
+  const MAXN = 1000000;
+  const MAXT = 1000;
+
+  function bad(field, message) { const e = new Error(message); e.field = field; throw e; }
+  function clean(s) { return String(s == null ? '' : s).replace(/[,，\s]/g, '').replace(/％/g, '%'); }
+  function round(x, d) { const p = Math.pow(10, d); return Math.round(Number((x * p).toPrecision(15))) / p; }
+  function fmt(x, d) {
+    const r = round(x, d);
+    let s = Math.abs(r).toFixed(d);
+    if (d > 0) s = s.replace(/\.?0+$/, '');
+    const parts = s.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return (r < 0 ? '-' : '') + parts.join('.');
+  }
+  /* p 值显示：太小写「< 0.0001」，其余 3–4 位有效 */
+  function fmtP(p) {
+    if (!(p >= 0)) return '—';
+    if (p >= 0.9995) return '1';
+    if (p < 0.0001) return '< 0.0001';
+    if (p < 0.001) return p.toFixed(4).replace(/0+$/, '');
+    return p.toFixed(3);
+  }
+  /* 「p = 0.243」或「p < 0.0001」 */
+  function pEq(p) { const t = fmtP(p); return t[0] === '<' ? 'p ' + t : 'p = ' + t; }
+  /* 准确率差，单位「个百分点」，带正负号 */
+  function fmtPts(x) { const v = round(x * 100, 2); return (v > 0 ? '+' : '') + fmt(v, 2); }
+
+  /* ── 二项尾概率（正则化不完全 Beta） ── */
+  function lgamma(x) {
+    const g = [676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
+      12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+    if (x < 0.5) return Math.log(Math.PI / Math.abs(Math.sin(Math.PI * x))) - lgamma(1 - x);
+    x -= 1; let a = 0.99999999999980993; const t = x + 7.5;
+    for (let i = 0; i < 8; i++) a += g[i] / (x + i + 1);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+  }
+  function betacf(a, b, x) {
+    const FPMIN = 1e-300; let qab = a + b, qap = a + 1, qam = a - 1, c = 1, d = 1 - qab * x / qap;
+    if (Math.abs(d) < FPMIN) d = FPMIN; d = 1 / d; let h = d;
+    for (let m = 1; m <= 100000; m++) {
+      const m2 = 2 * m; let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+      d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN; c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN; d = 1 / d; h *= d * c;
+      aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+      d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN; c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN; d = 1 / d;
+      const del = d * c; h *= del; if (Math.abs(del - 1) < 1e-15) break;
+    }
+    return h;
+  }
+  /* I_x(a, b) */
+  function ibeta(a, b, x) {
+    if (x <= 0) return 0; if (x >= 1) return 1;
+    const lbt = lgamma(a + b) - lgamma(a) - lgamma(b) + a * Math.log(x) + b * Math.log(1 - x);
+    const bt = Math.exp(lbt);
+    if (x < (a + 1) / (a + b + 2)) return bt * betacf(a, b, x) / a;
+    return 1 - bt * betacf(b, a, 1 - x) / b;
+  }
+  /* P(X ≤ k)，X ~ 二项(n, 1/2) */
+  function binomLE(n, k) {
+    if (k < 0) return 0; if (k >= n) return 1;
+    return Math.min(1, Math.max(0, ibeta(n - k, k + 1, 0.5)));
+  }
+  /* 精确 McNemar 双侧 p */
+  function mcnemar(b, c) {
+    const D = b + c; if (D === 0) return 1;
+    return Math.min(1, 2 * binomLE(D, Math.min(b, c)));
+  }
+  /* 标准正态右尾（Abramowitz–Stegun 7.1.26 的高精度版：用 erfc 连分式） */
+  function normSF(z) {
+    if (z < 0) return 1 - normSF(-z);
+    /* erfc(x) 用 W. J. Cody 有理逼近的简化：Numerical Recipes erfcc，相对误差 < 1.2e-7 */
+    const x = z / Math.SQRT2, t = 1 / (1 + 0.5 * x);
+    const r = t * Math.exp(-x * x - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 +
+      t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+    return r / 2;
+  }
+  /* 不配对的两比例 z 检验（合并方差），只作对照 */
+  function unpaired(xa, xb, n) {
+    const pa = xa / n, pb = xb / n, pp = (xa + xb) / (2 * n), se = Math.sqrt(pp * (1 - pp) * 2 / n);
+    if (!(se > 0)) return 1;
+    return Math.min(1, 2 * normSF(Math.abs(pa - pb) / se));
+  }
+
+  /* 四格都乘 t 倍：最小的整数 t（1..MAXT）让 p < alpha；分歧题打平或没有分歧题返回 null，超过上限返回 Infinity */
+  function timesNeeded(b, c, alpha) {
+    if (b === c) return null;
+    if (mcnemar(b, c) < alpha) return 1;
+    if (mcnemar(b * MAXT, c * MAXT) >= alpha) return Infinity;
+    let lo = 1, hi = MAXT; /* p(lo) ≥ α，p(hi) < α */
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (mcnemar(b * mid, c * mid) < alpha) hi = mid; else lo = mid; }
+    return hi;
+  }
+  /* 分歧题 D 道不变，领先一方至少赢几道才过门槛；D 道全赢也不够返回 null */
+  function winsNeeded(D, alpha) {
+    if (D === 0 || mcnemar(D, 0) >= alpha) return null;
+    let lo = Math.floor(D / 2), hi = D; /* p(lo) ≥ α（lo = D/2 附近 p≈1），p(hi) < α */
+    if (mcnemar(lo, D - lo) < alpha) return lo;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (mcnemar(mid, D - mid) < alpha) hi = mid; else lo = mid; }
+    return hi;
+  }
+  /* 只知道准确率：差 k 道，D 在 [k, dmax] 且与 k 同奇偶；最大的 D 让 p < alpha，一个都没有返回 null */
+  function maxDiscord(k, dmax, alpha) {
+    const p = (D) => mcnemar((D + k) / 2, (D - k) / 2);
+    if (k === 0 || p(k) >= alpha) return null;
+    if (p(dmax) < alpha) return dmax;
+    let lo = k, hi = dmax; /* p(lo) < α，p(hi) ≥ α，都与 k 同奇偶 */
+    while (hi - lo > 2) { let mid = (lo + hi) >> 1; if ((mid - k) % 2) mid -= 1; if (mid <= lo) mid = lo + 2; if (p(mid) < alpha) lo = mid; else hi = mid; }
+    return lo;
+  }
+
+  function intIn(s, field, label, lo, hi) {
+    const t = clean(s);
+    if (t === '') bad(field, label + '没填');
+    if (!/^\d+$/.test(t)) bad(field, label + '要填不带小数的整数（现在是「' + String(s).slice(0, 20) + '」）');
+    const v = Number(t);
+    if (v < lo || v > hi) bad(field, label + '要在 ' + fmt(lo, 0) + '–' + fmt(hi, 0) + ' 之间（现在是 ' + fmt(v, 0) + '）');
+    return v;
+  }
+  /* 「146」或「73%」 → 答对题数（百分比按 N 换算，取最近整数） */
+  function countOrPct(s, field, label, N) {
+    const t = clean(s);
+    if (t === '') bad(field, label + '没填');
+    let m = /^(\d+(\.\d+)?)%$/.exec(t);
+    if (m) {
+      const p = Number(m[1]);
+      if (p > 100) bad(field, label + '的百分比不能超过 100%（现在是 ' + m[1] + '%）');
+      return { n: Math.round(round(N * p / 100, 6)), fromPct: true, pct: p };
+    }
+    if (!/^\d+$/.test(t)) bad(field, label + '填答对的题数（整数），或者带 % 的准确率（现在是「' + String(s).slice(0, 20) + '」）');
+    const v = Number(t);
+    if (v > N) bad(field, label + '答对 ' + fmt(v, 0) + ' 道，比总题数 ' + fmt(N, 0) + ' 还多');
+    return { n: v, fromPct: false };
+  }
+  function nameOf(s, dflt) { const t = String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, 40); return t || dflt; }
+
+  /* 逐题对错：一行一个模型；1/对/✓/√/T/Y 算对，0/错/✗/×/F/N 算错；空格、逗号、竖线忽略 */
+  function parseMarks(s, field, label) {
+    const t = String(s == null ? '' : s);
+    if (t.length > 2000000) bad(field, label + '太长了（最多 100 万道题）');
+    const out = [];
+    for (const ch of t) {
+      if (/[\s,，、|;；]/.test(ch)) continue;
+      if ('1对✓√✔TtYy'.indexOf(ch) >= 0) out.push(1);
+      else if ('0错✗×✘FfNnXx'.indexOf(ch) >= 0) out.push(0);
+      else bad(field, label + '里有认不出的字符「' + ch + '」（第 ' + (out.length + 1) + ' 道附近）；只认 1/0、对/错、✓/✗、T/F');
+    }
+    if (!out.length) bad(field, label + '是空的');
+    if (out.length > MAXN) bad(field, label + '有 ' + fmt(out.length, 0) + ' 道，最多 ' + fmt(MAXN, 0) + ' 道');
+    return out;
+  }
+  function cellsFromMarks(sa, sb) {
+    const a = parseMarks(sa, 'markA', 'A 的逐题对错'), b = parseMarks(sb, 'markB', 'B 的逐题对错');
+    if (a.length !== b.length) bad('markB', '两行题数不一样：A 有 ' + fmt(a.length, 0) + ' 道，B 有 ' + fmt(b.length, 0) + ' 道；要按同一顺序对齐同一套题');
+    let n11 = 0, b1 = 0, c1 = 0, n00 = 0;
+    for (let i = 0; i < a.length; i++) { if (a[i] && b[i]) n11++; else if (a[i]) b1++; else if (b[i]) c1++; else n00++; }
+    return { n11, b: b1, c: c1, n00, n: a.length };
+  }
+
+  function parse(s) {
+    const P = {};
+    P.mode = s.mode === 'acc' ? 'acc' : 'cells';
+    P.nameA = nameOf(s.nameA, 'A'); P.nameB = nameOf(s.nameB, 'B');
+    if (P.nameA === P.nameB) bad('nameB', '两边名字一样，看结果时分不清；改一个');
+    const at = clean(s.alpha);
+    if (!/^\d*\.?\d+$/.test(at) || !(Number(at) > 0) || Number(at) > 0.2) bad('alpha', '门槛 α 要在 0 到 0.2 之间（常用 0.05；现在是「' + String(s.alpha).slice(0, 12) + '」）');
+    P.alpha = Number(at);
+    P.m = intIn(s.m, 'm', '一共比了几组', 1, 1000);
+    P.aeff = P.alpha / P.m;
+    if (P.mode === 'cells') {
+      P.n11 = intIn(s.n11, 'n11', '两边都对', 0, MAXN);
+      P.b = intIn(s.b, 'b', '只有 ' + P.nameA + ' 对', 0, MAXN);
+      P.c = intIn(s.c, 'c', '只有 ' + P.nameB + ' 对', 0, MAXN);
+      P.n00 = intIn(s.n00, 'n00', '两边都错', 0, MAXN);
+      P.N = P.n11 + P.b + P.c + P.n00;
+      if (P.N === 0) bad('n11', '四格加起来是 0 道题');
+      if (P.N > MAXN) bad('n00', '四格加起来 ' + fmt(P.N, 0) + ' 道，最多 ' + fmt(MAXN, 0) + ' 道');
+      P.xa = P.n11 + P.b; P.xb = P.n11 + P.c;
+    } else {
+      P.N = intIn(s.total, 'total', '总题数', 1, MAXN);
+      const ra = countOrPct(s.accA, 'accA', P.nameA + ' 的成绩', P.N), rb = countOrPct(s.accB, 'accB', P.nameB + ' 的成绩', P.N);
+      P.xa = ra.n; P.xb = rb.n; P.pctA = ra.fromPct ? ra.pct : null; P.pctB = rb.fromPct ? rb.pct : null;
+    }
+    return P;
+  }
+
+  function verdictOf(P, b, c, p) {
+    const D = b + c, lead = b > c ? P.nameA : P.nameB, lag = b > c ? P.nameB : P.nameA;
+    if (D === 0) return { key: 'same', lead: null, text: '两边每道题的对错都一样，这套题分不出高下' };
+    if (b === c) return { key: 'tie', lead: null, text: '分歧题 ' + b + ' 比 ' + c + ' 打平，谈不上谁赢' };
+    if (p < P.aeff) return { key: 'win', lead, text: '可以说 ' + lead + ' 在这套题上比 ' + lag + ' 强' };
+    return { key: 'notyet', lead, text: '先别急着说 ' + lead + ' 赢了：差距还在运气范围里' };
+  }
+
+  function calculate(s) {
+    const P = parse(s);
+    const N = P.N, r = { P, mode: P.mode };
+    r.accA = P.xa / N; r.accB = P.xb / N; r.diff = r.accA - r.accB;
+    const thr = '门槛 ' + fmtP(P.aeff) + (P.m > 1 ? '（' + fmt(P.alpha, 4) + ' ÷ ' + P.m + ' 组）' : '');
+    r.thr = thr;
+    const facts = [];
+    if (P.mode === 'cells') {
+      const b = P.b, c = P.c, D = b + c;
+      r.D = D; r.p = mcnemar(b, c); r.pUnpaired = unpaired(P.xa, P.xb, N);
+      r.verdict = verdictOf(P, b, c, r.p);
+      const hi = Math.max(b, c), lo = Math.min(b, c), lead = b >= c ? P.nameA : P.nameB;
+      r.times = timesNeeded(b, c, P.aeff);
+      r.wins = winsNeeded(D, P.aeff);
+      r.ladder = [1, 2, 3, 5, 10].concat(r.times && isFinite(r.times) && [1, 2, 3, 5, 10].indexOf(r.times) < 0 ? [r.times] : []).sort((x, y) => x - y)
+        .map((t) => { const p = mcnemar(b * t, c * t); return { t, N: N * t, b: b * t, c: c * t, p, pass: p < P.aeff }; });
+      facts.push(P.nameA + ' 答对 ' + fmt(P.xa, 0) + ' / ' + fmt(N, 0) + '（' + fmt(r.accA * 100, 2) + '%），' + P.nameB + ' 答对 ' + fmt(P.xb, 0) + '（' + fmt(r.accB * 100, 2) + '%），差 ' + fmtPts(r.diff) + ' 个百分点。');
+      facts.push('两边都对 ' + fmt(P.n11, 0) + ' 道、都错 ' + fmt(P.n00, 0) + ' 道，这些题不分胜负；真正分出高下的只有 ' + fmt(D, 0) + ' 道分歧题，' + P.nameA + ' 赢 ' + fmt(b, 0) + ' 道、' + P.nameB + ' 赢 ' + fmt(c, 0) + ' 道。');
+      if (D > 0) facts.push('假如两边其实一样强，' + fmt(D, 0) + ' 道分歧题里一边赢到 ' + fmt(hi, 0) + ' 道以上（或 ' + fmt(lo, 0) + ' 道以下）的机会是 ' + pEq(r.p) + '，' + thr + '。');
+      if (D > 0 && b !== c) {
+        if (r.wins == null) facts.push('分歧题只有 ' + fmt(D, 0) + ' 道，就算 ' + lead + ' 全赢，p 也只有 ' + fmtP(mcnemar(D, 0)) + '，到不了门槛：题太少，先加题。');
+        else if (r.verdict.key === 'notyet') facts.push('分歧题还是 ' + fmt(D, 0) + ' 道的话，' + lead + ' 要赢到 ' + fmt(r.wins, 0) + ' 比 ' + fmt(D - r.wins, 0) + ' 才过门槛（现在 ' + fmt(hi, 0) + ' 比 ' + fmt(lo, 0) + '）。');
+        if (r.verdict.key === 'notyet') {
+          if (r.times === Infinity) facts.push('就算新题上的结果跟现在一模一样，考到现在的 ' + MAXT + ' 倍也过不了门槛。');
+          else facts.push('如果新题上的结果跟现在一模一样，要考到现在的 ' + r.times + ' 倍（' + fmt(N * r.times, 0) + ' 道）才过门槛；新题的结果一变，这个数就跟着变。');
+        }
+      }
+      facts.push('要是把两份结果当成两批不同的题来比（不配对），' + pEq(r.pUnpaired) + '；同一套题应该逐题配对，只看分歧题。');
+      if (P.m > 1) facts.push('一共比了 ' + P.m + ' 组、挑最好的来说，门槛按 ' + fmt(P.alpha, 4) + ' ÷ ' + P.m + ' = ' + fmtP(P.aeff) + ' 算；只比这一组的话门槛是 ' + fmtP(P.alpha) + '，' + (r.p < P.alpha ? '能过' : '也过不了') + '。');
+      r.summary = r.verdict.text;
+    } else {
+      const k = Math.abs(P.xa - P.xb), lead = P.xa >= P.xb ? P.nameA : P.nameB, lag = P.xa >= P.xb ? P.nameB : P.nameA;
+      const dmax = Math.min(P.xa + P.xb, 2 * N - P.xa - P.xb);
+      r.k = k; r.dmax = dmax;
+      r.pMin = mcnemar(k, 0); r.pMax = mcnemar((dmax + k) / 2, (dmax - k) / 2);
+      r.dStar = maxDiscord(k, dmax, P.aeff);
+      const di = N * (r.accA * (1 - r.accB) + r.accB * (1 - r.accA));
+      let dInd = Math.round(di); if ((dInd - k) % 2) dInd += (dInd + 1 <= dmax ? 1 : -1); dInd = Math.max(k, Math.min(dmax, dInd));
+      r.dInd = dInd; r.pInd = mcnemar((dInd + k) / 2, (dInd - k) / 2);
+      if (k === 0) { r.verdict = { key: 'tie', lead: null, text: '两边答对的题一样多，不管逐题怎样都谈不上谁赢' }; }
+      else if (r.pMax < P.aeff) r.verdict = { key: 'win', lead, text: '可以说 ' + lead + ' 比 ' + lag + ' 强：不管逐题怎么分布都过门槛' };
+      else if (r.pMin >= P.aeff) r.verdict = { key: 'notyet', lead, text: '先别急着说 ' + lead + ' 赢了：就算最有利的情况也过不了门槛' };
+      else r.verdict = { key: 'depends', lead, text: '还说不准：要看两边有多少道题对错不一样' };
+      const ds = [k, r.dStar, dInd, dmax].filter((x, i, a) => x != null && a.indexOf(x) === i).sort((x, y) => x - y);
+      r.table = ds.map((D) => { const p = mcnemar((D + k) / 2, (D - k) / 2); return { D, b: (D + k) / 2, c: (D - k) / 2, p, pass: p < P.aeff, tag: [D === k ? '最少' : '', D === r.dStar ? '最多还能过' : '', D === dInd ? '两边独立答题' : '', D === dmax ? '最多' : ''].filter(Boolean).join(' / ') }; });
+      facts.push(P.nameA + ' 答对 ' + fmt(P.xa, 0) + ' / ' + fmt(N, 0) + (P.pctA != null ? '（按 ' + fmt(P.pctA, 4) + '% 换算）' : '') + '，' + P.nameB + ' 答对 ' + fmt(P.xb, 0) + (P.pctB != null ? '（按 ' + fmt(P.pctB, 4) + '% 换算）' : '') + '，差 ' + fmt(k, 0) + ' 道、' + fmtPts(r.diff) + ' 个百分点。');
+      if (k > 0) {
+        facts.push('只知道总分时，两边对错不一样的题可能少到 ' + fmt(k, 0) + ' 道（全是 ' + lead + ' 赢），也可能多到 ' + fmt(dmax, 0) + ' 道；p 在 ' + fmtP(r.pMin) + ' 到 ' + fmtP(r.pMax) + ' 之间，' + thr + '。');
+        if (r.dStar != null && r.dStar < dmax) facts.push('两边对错不一样的题不超过 ' + fmt(r.dStar, 0) + ' 道，才能说 ' + lead + ' 赢；去拿逐题结果数一下。');
+        facts.push('要是两边各答各的、互不相关，对错不一样的题大约 ' + fmt(dInd, 0) + ' 道，' + pEq(r.pInd) + '；同一套题上两个模型通常错在相近的题上，实际分歧往往更少，这一行只作参考。');
+      }
+      if (P.m > 1) facts.push('一共比了 ' + P.m + ' 组、挑最好的来说，门槛按 ' + fmt(P.alpha, 4) + ' ÷ ' + P.m + ' = ' + fmtP(P.aeff) + ' 算。');
+      r.summary = r.verdict.text;
+    }
+    r.facts = facts;
+    return r;
+  }
+
+  /* 建议：每条都带 apply（可代回的新输入），并且代回后结论或关键读数真的变 */
+  function suggestions(s, r) {
+    const P = r.P, out = [];
+    if (P.mode === 'cells') {
+      if (r.verdict.key === 'notyet' && r.times && isFinite(r.times) && r.times > 1) {
+        const t = r.times;
+        out.push({ id: 'more', text: '照现在的比例把题加到 ' + fmt(P.N * t, 0) + ' 道（' + t + ' 倍）再比一次：如果结果不变，' + pEq(mcnemar(P.b * t, P.c * t)) + '，能过门槛',
+          apply: { n11: String(P.n11 * t), b: String(P.b * t), c: String(P.c * t), n00: String(P.n00 * t) } });
+      }
+      if (r.verdict.key === 'notyet' && r.wins != null) {
+        const aLead = P.b > P.c, w = r.wins, D = r.D;
+        out.push({ id: 'wins', text: '同样 ' + fmt(D, 0) + ' 道分歧题，' + (aLead ? P.nameA : P.nameB) + ' 要赢到 ' + fmt(w, 0) + ' 比 ' + fmt(D - w, 0) + '：看看差在哪几道',
+          apply: aLead ? { b: String(w), c: String(D - w) } : { b: String(D - w), c: String(w) } });
+      }
+      if (P.m > 1 && r.verdict.key !== 'win' && r.p < P.alpha) {
+        out.push({ id: 'm1', text: '如果事先就只打算比这一组（不是挑出来的），门槛回到 ' + fmtP(P.alpha) + '，就能过', apply: { m: '1' } });
+      }
+      if (r.verdict.key === 'win') {
+        const b = P.b, c = P.c, hi = Math.max(b, c), lo = Math.min(b, c);
+        /* 压力测试：领先方少赢几道还能不能过 */
+        let x = 0; while (x < hi - lo && mcnemar(hi - x - 1, lo + x + 1) < P.aeff) x++;
+        const nb = b > c ? b - x - 1 : b + x + 1, nc = b > c ? c + x + 1 : c - x - 1;
+        if (x + 1 <= hi - lo) out.push({ id: 'stress', text: '压力测试：分歧题里有 ' + (x + 1) + ' 道换个结果（' + fmt(Math.max(nb, nc), 0) + ' 比 ' + fmt(Math.min(nb, nc), 0) + '），结论就翻成「先别急」', apply: { b: String(nb), c: String(nc) } });
+      }
+    } else if (r.k > 0 && r.verdict.key !== 'tie') {
+      /* 有逐题结果就去数；没有就给一个「分歧题恰好在临界」的四格作起点 */
+      const D = r.dStar != null ? r.dStar : r.dInd, k = r.k, bb = P.xa >= P.xb ? (D + k) / 2 : (D - k) / 2, cc = D - bb;
+      const n11 = P.xa - bb, n00 = P.N - n11 - bb - cc;
+      if (n11 >= 0 && n00 >= 0) out.push({ id: 'cells', text: '换成逐题结果来算：先按「对错不一样的题 ' + fmt(D, 0) + ' 道」填四格（' + (r.dStar != null ? '刚好还能过门槛' : '两边独立答题的估计') + '），再改成你数出来的真实数',
+        apply: { mode: 'cells', n11: String(n11), b: String(bb), c: String(cc), n00: String(n00) } });
+    }
+    return out;
+  }
+
+  function csvCell(v) { const t = String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }
+  function toCSV(r, when) {
+    const P = r.P, L = [];
+    L.push(['先别急着说赢', when].map(csvCell).join(','));
+    L.push(['结论', r.summary].map(csvCell).join(','));
+    L.push(['总题数', P.N].join(','));
+    L.push([P.nameA + ' 答对', P.xa].map(csvCell).join(','));
+    L.push([P.nameB + ' 答对', P.xb].map(csvCell).join(','));
+    L.push(['准确率差(百分点)', fmtPts(r.diff)].join(','));
+    L.push(['门槛', fmtP(P.aeff), '比了几组', P.m].join(','));
+    if (P.mode === 'cells') {
+      L.push(['两边都对', P.n11].join(','), [csvCell('只有 ' + P.nameA + ' 对'), P.b].join(','), [csvCell('只有 ' + P.nameB + ' 对'), P.c].join(','), ['两边都错', P.n00].join(','));
+      L.push(['精确McNemar p', fmtP(r.p)].join(','), ['不配对对照 p', fmtP(r.pUnpaired)].join(','));
+      L.push('', '倍数,总题数,' + csvCell(P.nameA + ' 赢') + ',' + csvCell(P.nameB + ' 赢') + ',p,过门槛');
+      r.ladder.forEach((x) => L.push([x.t, x.N, x.b, x.c, fmtP(x.p), x.pass ? '是' : '否'].map(csvCell).join(',')));
+    } else {
+      L.push('', '对错不一样的题,' + csvCell(P.nameA + ' 赢') + ',' + csvCell(P.nameB + ' 赢') + ',p,过门槛,说明');
+      r.table.forEach((x) => { const ba = P.xa >= P.xb ? x.b : x.c, bb = P.xa >= P.xb ? x.c : x.b; L.push([x.D, ba, bb, fmtP(x.p), x.pass ? '是' : '否', x.tag].map(csvCell).join(',')); });
+    }
+    L.push('');
+    r.facts.forEach((f) => L.push(csvCell(f)));
+    return L.join('\n') + '\n';
+  }
+  function toMD(r, when, sg) {
+    const P = r.P, L = [], e = (t) => String(t).replace(/\|/g, '\\|');
+    L.push('# 先别急着说赢', '', '> ' + when + ' · ' + e(P.nameA) + ' vs ' + e(P.nameB) + ' · ' + fmt(P.N, 0) + ' 道题 · ' + r.thr, '');
+    L.push('**' + r.summary + '**', '');
+    r.facts.forEach((f) => L.push('- ' + f));
+    if (P.mode === 'cells') {
+      L.push('', '|  | ' + e(P.nameB) + ' 对 | ' + e(P.nameB) + ' 错 |', '|---|---:|---:|', '| ' + e(P.nameA) + ' 对 | ' + fmt(P.n11, 0) + ' | ' + fmt(P.b, 0) + ' |', '| ' + e(P.nameA) + ' 错 | ' + fmt(P.c, 0) + ' | ' + fmt(P.n00, 0) + ' |');
+      L.push('', '## 照现在的比例多考几倍', '', '| 倍数 | 总题数 | 分歧题 | p | 过门槛 |', '|---:|---:|---:|---:|---|');
+      r.ladder.forEach((x) => L.push('| ' + x.t + ' | ' + fmt(x.N, 0) + ' | ' + fmt(x.b, 0) + ' 比 ' + fmt(x.c, 0) + ' | ' + fmtP(x.p) + ' | ' + (x.pass ? '是' : '否') + ' |'));
+    } else {
+      L.push('', '| 对错不一样的题 | 分法 | p | 过门槛 | 说明 |', '|---:|---:|---:|---|---|');
+      r.table.forEach((x) => L.push('| ' + fmt(x.D, 0) + ' | ' + fmt(x.b, 0) + ' 比 ' + fmt(x.c, 0) + ' | ' + fmtP(x.p) + ' | ' + (x.pass ? '是' : '否') + ' | ' + x.tag + ' |'));
+    }
+    if (sg && sg.length) { L.push('', '## 换个条件看看'); sg.forEach((x) => L.push('- ' + e(x.text))); }
+    L.push('', '口径：精确 McNemar 检验（双侧），只看这套题；过了门槛说明差距不太像运气，不说明换一套题、换一类任务也赢。');
+    return L.join('\n') + '\n';
+  }
+
+  const api = { parse, calculate, suggestions, toCSV, toMD, cellsFromMarks, parseMarks, mcnemar, binomLE, unpaired, normSF, timesNeeded, winsNeeded, maxDiscord, fmt, fmtP, fmtPts, round, MAXN, MAXT };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.AppCore = api;
+})(typeof window !== 'undefined' ? window : this);
+
+  </script>
+  <script>
+/* 先别急着说赢 · 界面层 */
+(function () {
+  'use strict';
+  const C = window.AppCore;
+  const KEY = 'dont-call-it-yet:v1';
+  const DEFAULT = { mode: 'cells', nameA: '新提示词', nameB: '旧提示词', alpha: '0.05', m: '1', n11: '124', b: '22', c: '14', n00: '40', total: '200', accA: '73%', accB: '69%', markA: '', markB: '' };
+  const W = (o) => Object.assign({}, DEFAULT, o);
+  const PRESETS = [
+    ['默认：200 道题差 4 个点', DEFAULT],
+    ['同样比例考 5,000 道', W({ n11: '3100', b: '550', c: '350', n00: '1000' })],
+    ['50 道题、分歧题 8 比 1', W({ nameA: '模型甲', nameB: '模型乙', n11: '30', b: '8', c: '1', n00: '11' })],
+    ['试了 5 版提示词挑最好的', W({ m: '5', n11: '124', b: '30', c: '14', n00: '32' })],
+    ['只知道 73% 对 69%', W({ mode: 'acc' })]
+  ];
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const copy = (o) => JSON.parse(JSON.stringify(o));
+  const F = ['nameA', 'nameB', 'alpha', 'm', 'n11', 'b', 'c', 'n00', 'total', 'accA', 'accB', 'markA', 'markB'];
+  let state = copy(DEFAULT);
+  let last = null;
+  const BLUE = '#4a62a8', ORANGE = '#d07a2c', GREY = '#d9d3c7';
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式忽略 */ } }
+  function load() {
+    try {
+      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+      const s = copy(DEFAULT);
+      F.forEach((k) => { if (o[k] != null) s[k] = String(o[k]).slice(0, k.indexOf('mark') === 0 ? 2100000 : 60); });
+      s.mode = o.mode === 'acc' ? 'acc' : 'cells';
+      return s;
+    } catch (e) { return null; }
+  }
+  function fill() {
+    F.forEach((k) => { $(k).value = state[k]; });
+    [].forEach.call($('tabs').children, (b) => b.classList.toggle('on', b.dataset.mode === state.mode));
+    $('boxCells').style.display = state.mode === 'cells' ? '' : 'none';
+    $('boxAcc').style.display = state.mode === 'acc' ? '' : 'none';
+    labels();
+  }
+  function labels() {
+    const a = (state.nameA || '').trim() || 'A', b = (state.nameB || '').trim() || 'B';
+    $('hB1').textContent = b + ' 对'; $('hB0').textContent = b + ' 错';
+    $('hA1').textContent = a + ' 对'; $('hA0').textContent = a + ' 错';
+    $('lb').textContent = '只有 ' + a + ' 对'; $('lc').textContent = '只有 ' + b + ' 对';
+    $('laA').textContent = a + ' 答对几道（或 73%）'; $('laB').textContent = b + ' 答对几道（或 69%）';
+  }
+
+  /* 分歧题牌面：一道题一个点，蓝 = A 赢，橙 = B 赢；竖线 = 领先方要赢到这里才过门槛 */
+  function duel(r) {
+    const P = r.P, svg = $('duel');
+    const parts = [];
+    const nA = P.nameA, nB = P.nameB;
+    if (P.mode === 'cells') {
+      const D = r.D, b = P.b, c = P.c;
+      $('duelTitle').textContent = '分歧题：' + C.fmt(D, 0) + ' 道，' + nA + ' ' + C.fmt(b, 0) + ' 比 ' + C.fmt(c, 0) + ' ' + nB;
+      if (D === 0) { svg.setAttribute('viewBox', '0 0 900 60'); svg.innerHTML = '<text x="450" y="36" text-anchor="middle" font-size="16" fill="#6d675c">没有分歧题：两边每道题对错都一样</text>'; $('duelKey').innerHTML = ''; return; }
+      const aLead = b >= c, w = r.wins;
+      if (D <= 240) {
+        /* 窄屏一行少放几个点、字放大，免得 SVG 缩小后看不清 */
+        const narrow = (svg.parentNode.clientWidth || 900) < 560;
+        const per = narrow ? 15 : 30, cell = 900 / per, rows = Math.ceil(D / per), fs = narrow ? 34 : 15, H = rows * cell + fs + 26;
+        svg.setAttribute('viewBox', '0 0 900 ' + H);
+        /* 领先方的点排在前面，后面是落后方 */
+        const hi = Math.max(b, c), colHi = aLead ? BLUE : ORANGE, colLo = aLead ? ORANGE : BLUE;
+        for (let i = 0; i < D; i++) {
+          const x = (i % per) * cell + cell / 2, y = Math.floor(i / per) * cell + cell / 2 + 4;
+          const need = w != null && i >= hi && i < w; /* 还差的那几道：空心 */
+          parts.push(need ? '<circle cx="' + x + '" cy="' + y + '" r="' + (cell * 0.36) + '" fill="' + colLo + '" fill-opacity="0.35" stroke="' + colHi + '" stroke-width="2.5" stroke-dasharray="3 2"/>'
+            : '<circle cx="' + x + '" cy="' + y + '" r="' + (cell * 0.36) + '" fill="' + (i < hi ? colHi : colLo) + '"/>');
+        }
+        const lbl = w == null ? '分歧题太少，全赢也过不了门槛' : (r.verdict.key === 'win' ? '过门槛要赢 ' + w + ' 道，已经赢 ' + hi + ' 道' : '过门槛要赢 ' + w + ' 道，还差 ' + (w - hi) + ' 道（虚线圈）');
+        parts.push('<text x="0" y="' + (H - 8) + '" font-size="' + fs + '" fill="#4a463e">' + esc(lbl) + '</text>');
+      } else {
+        /* 分歧题太多画不下：画成按比例的条 */
+        const H = 90; svg.setAttribute('viewBox', '0 0 900 ' + H);
+        const wb = 900 * b / D;
+        parts.push('<rect x="0" y="10" width="' + wb + '" height="34" fill="' + BLUE + '"/><rect x="' + wb + '" y="10" width="' + (900 - wb) + '" height="34" fill="' + ORANGE + '"/>');
+        if (w != null) { const xw = aLead ? 900 * w / D : 900 * (D - w) / D; parts.push('<line x1="' + xw + '" y1="2" x2="' + xw + '" y2="52" stroke="#24221e" stroke-width="2" stroke-dasharray="5 3"/>'); }
+        parts.push('<line x1="450" y1="44" x2="450" y2="56" stroke="#6d675c"/>');
+        parts.push('<text x="0" y="78" font-size="15" fill="#4a463e">' + esc(w == null ? '一道一个点画不下，按比例画；' : '虚线 = 领先方要赢到 ' + C.fmt(w, 0) + ' 道才过门槛；中间刻度 = 打平') + '</text>');
+      }
+      $('duelKey').innerHTML = '<span><i style="background:' + BLUE + '"></i>只有 ' + esc(nA) + ' 对</span><span><i style="background:' + ORANGE + '"></i>只有 ' + esc(nB) + ' 对</span>';
+    } else {
+      /* 只知道准确率：横轴 = 分歧题道数（k..dmax），绿 = 过门槛，灰 = 过不了 */
+      const k = r.k, dmax = r.dmax, H = 110;
+      $('duelTitle').textContent = '对错不一样的题可能有几道（' + C.fmt(k, 0) + '–' + C.fmt(dmax, 0) + '）';
+      svg.setAttribute('viewBox', '0 0 900 ' + H);
+      if (k === 0) { svg.innerHTML = '<text x="450" y="50" text-anchor="middle" font-size="16" fill="#6d675c">答对题数一样多，不管分歧题有几道都是打平</text>'; $('duelKey').innerHTML = ''; return; }
+      const X0 = 20, X1 = 880, span = Math.max(1, dmax - k), xs = (D) => X0 + (X1 - X0) * (D - k) / span;
+      const xs2 = r.dStar == null ? X0 : xs(r.dStar);
+      parts.push('<rect x="' + X0 + '" y="22" width="' + (X1 - X0) + '" height="26" fill="' + GREY + '"/>');
+      if (r.dStar != null) parts.push('<rect x="' + X0 + '" y="22" width="' + Math.max(3, xs2 - X0) + '" height="26" fill="#5c9a76"/>');
+      parts.push('<line x1="' + xs(r.dInd) + '" y1="20" x2="' + xs(r.dInd) + '" y2="56" stroke="#24221e" stroke-width="2" stroke-dasharray="4 3"/>');
+      parts.push('<text x="' + X0 + '" y="72" font-size="14" fill="#4a463e">' + C.fmt(k, 0) + '</text><text x="' + X1 + '" y="72" font-size="14" text-anchor="end" fill="#4a463e">' + C.fmt(dmax, 0) + '</text>');
+      const ind = '独立答题估计 ' + C.fmt(r.dInd, 0) + ' 道';
+      const xi = Math.min(Math.max(xs(r.dInd), X0 + 110), X1 - 110);
+      parts.push('<text x="' + xi + '" y="12" font-size="13" text-anchor="middle" fill="#24221e">' + esc(ind) + '</text>');
+      parts.push('<text x="' + X0 + '" y="98" font-size="15" fill="#4a463e">' + esc(r.dStar == null ? '整段都过不了门槛' : '不超过 ' + C.fmt(r.dStar, 0) + ' 道（绿色）才能说赢') + '</text>');
+      $('duelKey').innerHTML = '<span><i style="background:#5c9a76;border-radius:2px"></i>过门槛</span><span><i style="background:' + GREY + ';border-radius:2px"></i>过不了</span>';
+    }
+    svg.innerHTML = parts.join('');
+  }
+
+  function render(r, sg) {
+    const P = r.P;
+    const s = $('summary'); s.textContent = r.summary; s.className = r.verdict.key;
+    const nums = [];
+    nums.push(['准确率差', C.fmtPts(r.diff) + ' 个百分点']);
+    if (P.mode === 'cells') {
+      nums.push(['分歧题', C.fmt(P.b, 0) + ' 比 ' + C.fmt(P.c, 0)]);
+      nums.push(['p', C.fmtP(r.p)]);
+      nums.push([r.thr.split('（')[0], P.m > 1 ? C.fmt(P.alpha, 4) + ' ÷ ' + P.m : '双侧']);
+      if (r.verdict.key === 'notyet') nums.push(['同比例要考', r.times === Infinity ? '> ' + C.MAXT + ' 倍' : C.fmt(P.N * r.times, 0) + ' 道']);
+    } else {
+      nums.push(['p 的范围', C.fmtP(r.pMin) + ' – ' + C.fmtP(r.pMax)]);
+      nums.push([r.thr.split('（')[0], P.m > 1 ? C.fmt(P.alpha, 4) + ' ÷ ' + P.m : '双侧']);
+      if (r.dStar != null && r.k > 0) nums.push(['分歧题不超过', C.fmt(r.dStar, 0) + ' 道']);
+    }
+    $('nums').innerHTML = nums.map((x) => '<div><small>' + esc(x[0]) + '</small><b>' + esc(x[1]) + '</b></div>').join('');
+    $('facts').innerHTML = r.facts.map((f) => '<li>' + esc(f) + '</li>').join('');
+    duel(r);
+    const T = $('tbl');
+    if (P.mode === 'cells') {
+      $('tblTitle').textContent = '照现在的比例多考几倍';
+      T.innerHTML = '<tr><th>倍数</th><th>总题数</th><th>分歧题</th><th>p</th><th>过门槛</th></tr>' +
+        r.ladder.map((x) => '<tr class="' + (x.pass ? 'pass' : '') + (x.t === 1 ? ' now' : '') + '"><td>' + x.t + (x.t === 1 ? '（现在）' : '') + '</td><td>' + C.fmt(x.N, 0) + '</td><td>' + C.fmt(x.b, 0) + ' 比 ' + C.fmt(x.c, 0) + '</td><td>' + C.fmtP(x.p) + '</td><td>' + (x.pass ? '是' : '否') + '</td></tr>').join('');
+      $('tblNote').textContent = '假设新题上四格比例跟现在一模一样；真实再考一次比例会变，这里只是「至少要这么多题」的量级。';
+    } else {
+      $('tblTitle').textContent = '分歧题有几道，结论就怎么变';
+      T.innerHTML = '<tr><th>对错不一样的题</th><th>' + esc(P.nameA) + ' 赢</th><th>' + esc(P.nameB) + ' 赢</th><th>p</th><th>过门槛 · 说明</th></tr>' +
+        r.table.map((x) => { const ba = P.xa >= P.xb ? x.b : x.c, bb = P.xa >= P.xb ? x.c : x.b; return '<tr class="' + (x.pass ? 'pass' : '') + '"><td>' + C.fmt(x.D, 0) + '</td><td>' + C.fmt(ba, 0) + '</td><td>' + C.fmt(bb, 0) + '</td><td>' + C.fmtP(x.p) + '</td><td>' + (x.pass ? '是' : '否') + ' · ' + esc(x.tag) + '</td></tr>'; }).join('');
+      $('tblNote').textContent = '只知道总分时分歧题数不确定；拿到逐题结果后切到「有逐题结果」再算。';
+    }
+    $('sugCard').style.display = sg.length ? '' : 'none';
+    $('sugs').innerHTML = '';
+    sg.forEach((x) => {
+      const d = document.createElement('div'); d.className = 'sug';
+      d.innerHTML = '<span>' + esc(x.text) + '</span>';
+      const bt = document.createElement('button'); bt.textContent = '代回去算'; bt.dataset.sug = x.id;
+      bt.addEventListener('click', () => { Object.assign(state, x.apply); fill(); run(); });
+      d.appendChild(bt); $('sugs').appendChild(d);
+    });
+  }
+
+  function run() {
+    [].forEach.call(document.querySelectorAll('.bad'), (e) => e.classList.remove('bad'));
+    labels();
+    try {
+      const r = C.calculate(state);
+      const sg = C.suggestions(state, r);
+      $('error').style.display = 'none'; $('out').style.display = '';
+      render(r, sg);
+      last = { r, sg };
+    } catch (e) {
+      last = null;
+      if (e.field) { const el = $(e.field); if (el) el.classList.add('bad'); }
+      $('error').textContent = '算不了：' + e.message; $('error').style.display = 'block';
+      $('out').style.display = 'none';
+    }
+    save();
+  }
+
+  /* ── 导出 ── */
+  function stamp() { const d = new Date(), z = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+  function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+  /* 按词切行；行首不放标点（把上一行末尾的词一起带下来，可能连带多个） */
+  function wrap(g, t, w) {
+    const NOHEAD = '，。、；：！？）」』%';
+    const out = []; let line = [];
+    const toks = String(t).match(/[+-]?[0-9][0-9,.:%]*|[A-Za-z]+|[\s\S]/g) || [];
+    const width = (a) => g.measureText(a.join('')).width;
+    for (const tk of toks) {
+      if (line.length && width(line.concat([tk])) > w) {
+        let carry = [tk];
+        while (line.length > 1 && (NOHEAD.indexOf(carry[0][0]) >= 0 || '（「『'.indexOf(line[line.length - 1]) >= 0)) carry.unshift(line.pop());
+        out.push(line.join(''));
+        line = carry; if (/^\s+$/.test(line[0])) line.shift();
+      } else line.push(tk);
+    }
+    if (line.length) out.push(line.join('')); return out;
+  }
+  function fitText(g, t, w, size, min, bold, FF) {
+    let fs = size; g.font = (bold ? 'bold ' : '') + fs + 'px ' + FF;
+    while (fs > min && g.measureText(t).width > w) { fs -= 1; g.font = (bold ? 'bold ' : '') + fs + 'px ' + FF; }
+    if (g.measureText(t).width <= w) return t;
+    let s = t; while (s.length > 1 && g.measureText(s + '…').width > w) s = s.slice(0, -1);
+    return s + '…';
+  }
+  function drawPNG(Lx) {
+    const r = Lx.r, P = r.P;
+    const Wd = 1080, H = 1350, X = 90, TW = 900;
+    const cv = document.createElement('canvas'); cv.width = Wd; cv.height = H;
+    const g = cv.getContext('2d'), FF = '"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#f3f1ec'; g.fillRect(0, 0, Wd, H);
+    g.fillStyle = '#fff'; g.fillRect(50, 50, Wd - 100, H - 100);
+    g.textBaseline = 'alphabetic';
+    g.fillStyle = '#7a7466'; g.font = '26px ' + FF; g.fillText('先别急着说赢 · 同一套题上的两边比较', X, 118);
+    g.fillStyle = '#24221e';
+    const head = fitText(g, P.nameA + ' vs ' + P.nameB + ' · ' + C.fmt(P.N, 0) + ' 道题', TW, 34, 22, true, FF); g.fillText(head, X, 170);
+    g.fillStyle = r.verdict.key === 'win' ? '#2f5d47' : (r.verdict.key === 'notyet' || r.verdict.key === 'depends') ? '#9a5a12' : '#625d53';
+    g.font = 'bold 44px ' + FF;
+    let y = 245; wrap(g, r.summary, TW).slice(0, 3).forEach((l) => { g.fillText(l, X, y); y += 58; });
+    y += 10;
+    /* 大数字 */
+    const big = P.mode === 'cells'
+      ? [['准确率差', C.fmtPts(r.diff) + ' 点'], ['分歧题', C.fmt(P.b, 0) + ' 比 ' + C.fmt(P.c, 0)], ['p / ' + r.thr.split('（')[0], C.fmtP(r.p)]]
+      : [['准确率差', C.fmtPts(r.diff) + ' 点'], ['p 的范围', C.fmtP(r.pMin) + '–' + C.fmtP(r.pMax)], [r.thr.split('（')[0], P.m > 1 ? '÷ ' + P.m + ' 组' : '双侧']];
+    const cw = TW / 3;
+    big.forEach((b, i) => {
+      g.fillStyle = '#7a7466'; g.font = '24px ' + FF; g.fillText(fitText(g, b[0], cw - 16, 24, 16, false, FF), X + i * cw, y);
+      g.fillStyle = '#24221e'; g.fillText(fitText(g, b[1], cw - 16, 46, 22, true, FF), X + i * cw, y + 56);
+    });
+    y += 100;
+    /* 图：分歧题条 */
+    if (P.mode === 'cells' && r.D > 0) {
+      const wb = TW * P.b / r.D;
+      g.fillStyle = BLUE; g.fillRect(X, y, wb, 44); g.fillStyle = ORANGE; g.fillRect(X + wb, y, TW - wb, 44);
+      if (r.wins != null) { const xw = X + (P.b >= P.c ? TW * r.wins / r.D : TW * (r.D - r.wins) / r.D); g.strokeStyle = '#24221e'; g.lineWidth = 3; g.setLineDash([8, 5]); g.beginPath(); g.moveTo(xw, y - 10); g.lineTo(xw, y + 54); g.stroke(); g.setLineDash([]); }
+      g.font = '22px ' + FF; g.fillStyle = '#4a463e';
+      const leg = '蓝 = 只有 ' + P.nameA + ' 对 ' + C.fmt(P.b, 0) + ' 道　橙 = 只有 ' + P.nameB + ' 对 ' + C.fmt(P.c, 0) + ' 道' + (r.wins != null ? '　虚线 = 过门槛要赢 ' + C.fmt(r.wins, 0) + ' 道' : '');
+      const ll = wrap(g, leg, TW).slice(0, 3);
+      ll.forEach((l, i) => g.fillText(l, X, y + 84 + i * 30));
+      y += 140 + (ll.length - 1) * 30;
+    } else if (P.mode === 'acc' && r.k > 0) {
+      const span = Math.max(1, r.dmax - r.k);
+      g.fillStyle = GREY; g.fillRect(X, y, TW, 44);
+      if (r.dStar != null) { g.fillStyle = '#5c9a76'; g.fillRect(X, y, Math.max(4, TW * (r.dStar - r.k) / span), 44); }
+      g.font = '22px ' + FF; g.fillStyle = '#4a463e';
+      g.fillText(fitText(g, '对错不一样的题 ' + C.fmt(r.k, 0) + '–' + C.fmt(r.dmax, 0) + ' 道；绿 = 过门槛' + (r.dStar != null ? '（≤ ' + C.fmt(r.dStar, 0) + ' 道）' : '（没有）'), TW, 22, 15, false, FF), X, y + 84);
+      y += 140;
+    }
+    /* 事实 */
+    g.font = '23px ' + FF; g.fillStyle = '#24221e';
+    const bottom = H - 150;
+    /* 结果卡只放主线事实；「不配对对照」是旁注，留在页面和 CSV/MD 里 */
+    for (const f of r.facts.filter((t) => !/不配对/.test(t))) {
+      const ls = wrap(g, '· ' + f, TW);
+      if (y + ls.length * 34 > bottom) break;
+      ls.forEach((l) => { g.fillText(l, X, y); y += 34; }); y += 6;
+    }
+    /* 剩下的位置放表：倍数阶梯 / 分歧题数对照 */
+    const rows = P.mode === 'cells'
+      ? [['倍数', '总题数', '分歧题', 'p', '过门槛']].concat(r.ladder.map((x) => [x.t === 1 ? '现在' : x.t + ' 倍', C.fmt(x.N, 0), C.fmt(x.b, 0) + ' 比 ' + C.fmt(x.c, 0), C.fmtP(x.p), x.pass ? '是' : '否']))
+      : (r.table ? [['分歧题', '分法', 'p', '过门槛', '']].concat(r.table.map((x) => [C.fmt(x.D, 0), C.fmt(x.b, 0) + ' 比 ' + C.fmt(x.c, 0), C.fmtP(x.p), x.pass ? '是' : '否', x.tag])) : []);
+    if (rows.length > 1 && (P.mode === "cells" ? r.D > 0 : r.k > 0)) {
+      y += 14;
+      const cols = P.mode === 'cells' ? [0, 150, 340, 600, 800] : [0, 150, 380, 540, 660];
+      const rh = 36;
+      if (y + rows.length * rh <= bottom) {
+        rows.forEach((row, i) => {
+          const pass = i > 0 && (P.mode === 'cells' ? row[4] === '是' : row[3] === '是');
+          g.fillStyle = i === 0 ? '#7a7466' : pass ? '#2f5d47' : '#24221e';
+          row.forEach((cell, j) => { const cw2 = (j + 1 < cols.length ? cols[j + 1] : TW) - cols[j] - 12; g.fillText(fitText(g, cell, cw2, i === 0 ? 20 : 22, 14, i > 0 && j === 0 && row[0] === '现在', FF), X + cols[j], y); });
+          y += rh;
+          if (i === 0) { g.strokeStyle = '#dcd6ca'; g.lineWidth = 1; g.beginPath(); g.moveTo(X, y - 26); g.lineTo(X + TW, y - 26); g.stroke(); }
+        });
+      }
+    }
+    g.fillStyle = '#7a7466'; g.font = '21px ' + FF;
+    wrap(g, '精确 McNemar 检验（双侧）。过了门槛只说明在这套题上不太像运气，不说明换一套题也赢。示例数据为虚构。', TW).forEach((l, i) => g.fillText(l, X, H - 110 + i * 30));
+    return cv;
+  }
+  function backup() {
+    const r = last.r, P = r.P;
+    const res = { summary: r.summary, verdict: r.verdict.key, N: P.N, correctA: P.xa, correctB: P.xb, diffPts: C.round(r.diff * 100, 4), threshold: P.aeff, facts: r.facts };
+    if (P.mode === 'cells') Object.assign(res, { discordant: r.D, p: r.p, pUnpaired: r.pUnpaired, timesNeeded: r.times === Infinity ? '>' + C.MAXT : r.times, winsNeeded: r.wins, ladder: r.ladder });
+    else Object.assign(res, { pMin: r.pMin, pMax: r.pMax, discordantRange: [r.k, r.dmax], maxDiscordantToPass: r.dStar, independentEstimate: r.dInd, table: r.table });
+    const inp = copy(state); if (inp.markA.length > 200000) { inp.markA = ''; inp.markB = ''; }
+    return { app: '先别急着说赢', version: 1, savedAt: stamp(), input: inp, result: res };
+  }
+
+  function init() {
+    F.forEach((k) => { if (k.indexOf('mark') !== 0) $(k).addEventListener('input', () => { state[k] = $(k).value; run(); }); else $(k).addEventListener('input', () => { state[k] = $(k).value; save(); }); });
+    [].forEach.call($('tabs').children, (b) => b.addEventListener('click', () => { state.mode = b.dataset.mode; fill(); run(); }));
+    $('countMarks').addEventListener('click', () => {
+      $('markA').classList.remove('bad'); $('markB').classList.remove('bad');
+      try {
+        const x = C.cellsFromMarks(state.markA, state.markB);
+        Object.assign(state, { n11: String(x.n11), b: String(x.b), c: String(x.c), n00: String(x.n00) });
+        $('markMsg').textContent = '数好了：' + C.fmt(x.n, 0) + ' 道题，四格 ' + x.n11 + ' / ' + x.b + ' / ' + x.c + ' / ' + x.n00;
+        fill(); run();
+      } catch (e) { if (e.field) $(e.field).classList.add('bad'); $('markMsg').textContent = '没数成：' + e.message; }
+    });
+    const box = $('presets');
+    PRESETS.forEach((p) => {
+      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = p[0];
+      b.addEventListener('click', () => { state = copy(p[1]); $('markMsg').textContent = ''; fill(); run(); });
+      box.appendChild(b);
+    });
+    $('reset').addEventListener('click', () => { state = copy(DEFAULT); $('markMsg').textContent = ''; fill(); run(); });
+    $('dlCSV').addEventListener('click', () => { if (last) download('先别急着说赢.csv', new Blob(['\ufeff' + C.toCSV(last.r, stamp())], { type: 'text/csv;charset=utf-8' })); });
+    $('dlMD').addEventListener('click', () => { if (last) download('先别急着说赢.md', new Blob([C.toMD(last.r, stamp(), last.sg)], { type: 'text/markdown;charset=utf-8' })); });
+    $('dlJSON').addEventListener('click', () => { if (last) download('先别急着说赢-备份.json', new Blob([JSON.stringify(backup(), null, 2)], { type: 'application/json' })); });
+    $('dlPNG').addEventListener('click', () => { if (last) drawPNG(last).toBlob((b) => download('先别急着说赢-1080x1350.png', b), 'image/png'); });
+    state = load() || copy(DEFAULT);
+    fill(); run();
+    window.__ex = { last: () => last, state: () => state, presets: PRESETS, png: () => last && drawPNG(last).toDataURL('image/png') };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+
+  </script>
+</body>
+</html>
